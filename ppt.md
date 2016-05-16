@@ -7,8 +7,6 @@
 
 ppt
 ========================================================
-author: Vishal Shukla
-date: 
 autosize: true
 
 
