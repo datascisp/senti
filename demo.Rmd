@@ -7,7 +7,7 @@ output: html_document
 To keep up with the competitive market, it is utmost necessary to keep an eye on customer satisfaction of our service offerings. Various social media platforms are being used today by individuals to communicate their experience. In this use case, we will be focusing on twitter data to identify underlying sentiments of bank customers by building sentiment analysis model using machine learning algorithms.
 
 # Data acquisition
-Tweets fetched from 20 to 30 twitter handles of banks across US and UK markets. The number of tweets used for training set would be around 40,000.  The task of data extraction will be performed on IIP.
+Tweets fetched from 20 to 30 twitter handles of banks across US and UK markets. The number of tweets used for training set would be around 50,000.
 
 Three class classification problem with positive (1), negative (-1) and neutral (0) as the three classes.
 We have manually annotated the polarity of the tweets which will further be used for training the model. And a part of it will be held out as validation set.
