@@ -38,21 +38,6 @@ twt$text <- str_replace_all(twt$text, "#", " ")
 twt$text <- str_replace_all(twt$text, "@", " ")
 twt$text <- tolower(twt$text)
 
-####################### If want to remove handle names ##########
-twt$text <- str_replace_all(twt$text, "ask_wellsfargo", " ")
-twt$text <- str_replace_all(twt$text, "hdfcbank_cares", " ")
-twt$text <- str_replace_all(twt$text, "axisbanksupport", " ")
-twt$text <- str_replace_all(twt$text, "hsbc", " ")
-twt$text <- str_replace_all(twt$text, "hsbc_us", " ")
-twt$text <- str_replace_all(twt$text, "td_canada", " ")
-twt$text <- str_replace_all(twt$text, "tdbank_us", " ")
-twt$text <- str_replace_all(twt$text, "hsbc_uk", " ")
-twt$text <- str_replace_all(twt$text, "bofa_help", " ")
-twt$text <- str_replace_all(twt$text, "bankofamerica", " ")
-twt$text <- str_replace_all(twt$text, "citi", " ")
-twt$text <- str_replace_all(twt$text, "icici", " ")
-twt$text <- str_replace_all(twt$text, "pncbank", " ")
-####################################################################
 # Normalizing text slightly improves acc
 twt$text <- stri_trans_nfc(twt$text)
 
@@ -75,10 +60,6 @@ corp <- tm_map(corp, stemDocument, language = "english")
 corp <- tm_map(corp, removeNumbers)
 corp <- tm_map(corp, removePunctuation)
 corp <- tm_map(corp, stripWhitespace)
-
-#################
-corp <- tm_map(corp, removeWords, c("bankcar", "ukhelp", "wellsfargo"))
-####################
 
 traintermmatrix <- DocumentTermMatrix(corp, control = list(weighting = weightTf, stopwords = T))
 traintermmatrix <- removeSparseTerms(traintermmatrix, 0.9997)
