@@ -16,9 +16,6 @@ test <- subset(twt, split == F)
 # Function to transform input pattern into space
 toSpace <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
 
-# stop word list
-stopwordlist <- c(stopwords("english"), "hsbcuk", "hdfcbankcar", "bofahelp", "hsbcukhelp", "bankofamerica", "icicibankcar", "axisbanksupport", "askwellsfargo", "tdbankus", "tdcanada")
-
 # Processing the training data for dtrain
 trainvector <- as.vector(train$text)
 corp <- Corpus(VectorSource(trainvector))
