@@ -1,0 +1,120 @@
+---
+title: "Sentiment Analysis"
+output: html_document
+---
+
+# Introduction
+To keep up with the competitive market, it is utmost necessary to keep an eye on customer satisfaction of our service offerings. Various social media platforms are being used today by individuals to communicate their experience. In this use case, we will be focusing on twitter data to identify underlying sentiments of bank customers by building sentiment analysis model using machine learning algorithms.
+
+# Data acquisition
+Tweets fetched from 20 to 30 twitter handles of banks across US and UK markets. The number of tweets used for training set would be around 40,000.  The task of data extraction will be performed on IIP.
+
+Three class classification problem with positive (1), negative (-1) and neutral (0) as the three classes.
+We have manually annotated the polarity of the tweets which will further be used for training the model. And a part of it will be held out as validation set.
+
+# Data pre-processing
+Load the required packages.
+```{r, warning=FALSE, message=FALSE}
+require(xlsx)
+require(tm)
+require(randomForest)
+require(caret)
+require(e1071)
+require(ggplot2)
+require(wordcloud)
+```
+Load the data into the memory
+```{r}
+twt <- read.xlsx("twt.xlsx", sheetIndex = 1)
+trainvector <- as.vector(twt$text)
+```
+Creating text corpus using tweets
+```{r}
+corp <- Corpus(VectorSource(trainvector))
+```
+Transformations during pre-processing
+```{r}
+# Function to transform input pattern into space
+
+toSpace <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+
+## Removing hashtags(#), mentions(@) and other special characters from corpus
+corp <- tm_map(corp, toSpace, "@")
+corp <- tm_map(corp, toSpace, "#")
+corp <- tm_map(corp, toSpace, "$")
+corp <- tm_map(corp, toSpace, "!")
+
+## changing all text to lowercase
+corp <- tm_map(corp, content_transformer(tolower))
+
+## Removing numbers and punctuation
+corp <- tm_map(corp, removeNumbers)
+corp <- tm_map(corp, removePunctuation)
+
+## Removing erroneous whitespaces
+corp <- tm_map(corp, stripWhitespace)
+```
+Now, creating document term matrix and taking steps like tf-idf weighting of terms and removal of stopwords
+```{r}
+termmatrix <- DocumentTermMatrix(corp, control = list(weighting = weightTfIdf, stopwords = T))
+```
+In case we want to remove stop words from prepared list
+```{r, eval=FALSE}
+stopwordlist <- readLines("stopwordlist.txt")
+corp <- tm_map(corp, removeWords, stopwordlist)
+```
+
+# Exploratory data analysis
+This is to explore our text corpus and get a highlight.
+I will include the following tasks
+
+ * Viewing the top 30 frequently occuring term
+ * Prepare wordcloud
+
+## For top 30 frequently occuring terms
+
+```{r}
+freq <- colSums(as.matrix(termmatrix))
+freq <- sort(freq, decreasing = T)
+freq <- as.data.frame(freq)
+freq <- data.frame(rownames(freq), freq$freq, prop.table(freq))
+colnames(freq) <- c("terms", "frequency", "percentage proportion")
+x <- subset(freq[1:30,])
+```
+Using ggplot
+```{r}
+ggplot(x, aes(x = reorder(x$terms, -x$frequency), y = x$frequency)) + geom_bar(stat = "Identity", fill = "Sky Blue") + ggtitle("Top 30 frequent terms") + xlab("Terms") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## For wordcloud
+Forming a wordcloud with maximum of 100 frequent words.
+```{r}
+wordcloud(freq$terms, freq$frequency, max.words = 100, rot.per = 0.2, colors = brewer.pal(8, "Dark2"))
+```
+
+# Model preperation
+Below mentioned model is in plain / vanilla form. And can be further optimized feeding in suitable arguments.
+I will be running  Support Vector Machine (SVM) in this report.
+Whereas our study shall cover other algorithms as well. (Such as Naive Bayes, Random Forests, XGBoost, etc.)
+Also tuneRF, tune.svm functions can be used to fine tune the function parameters.
+
+```{r}
+model_svm <- svm(as.matrix(termmatrix), as.factor(twt$polarity))
+results_svm <- predict(model_svm, as.matrix(termmatrix))
+```
+Although we will be testing our model on a separate test (validation) set, I have applied the model on the training set itself for demo purpose.
+
+Similarly, other models can also be prepared.
+```{r, eval=FALSE}
+#For Naive Bayes model
+model_NB <- naiveBayes(as.matrix(termmatrix), as.factor(twt$polarity))
+
+#For random forest model
+model_rf <- randomForest(as.matrix(termmatrix), as.factor(twt$polarity))
+```
+# Evaluating model performance
+Now, viewing performance using classification table (actual vs predicted)
+```{r}
+table(results_svm, twt$polarity)
+```
+Furthermore, ROC curve, lift curve, other statistics like kappa, etc. can also be used to evaluate model fit.
