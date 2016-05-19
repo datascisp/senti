@@ -1,3 +1,4 @@
+# Load required packages into memory
 require(tm)
 require(caTools)
 require(randomForest)
@@ -24,7 +25,7 @@ twt[10269, ]$polarity  <- 1
 table(twt$polarity)
 
 
-##################################### NER
+################## NER (Named Entity Recognition) ###################
 
 word_ann <- Maxent_Word_Token_Annotator()
 sent_ann <- Maxent_Sent_Token_Annotator()
@@ -33,7 +34,7 @@ org_ann <- Maxent_Entity_Annotator(kind = "organization", language = "en", probs
 
 ##########################################
 
-## Before removing twitter handles ############################################
+######### Before removing twitter handles ###############################
 twt$text <- str_replace_all(twt$text, "#", " ")
 twt$text <- str_replace_all(twt$text, "@", " ")
 twt$text <- tolower(twt$text)
@@ -63,10 +64,8 @@ corp <- tm_map(corp, stripWhitespace)
 
 traintermmatrix <- DocumentTermMatrix(corp, control = list(weighting = weightTf, stopwords = T))
 traintermmatrix <- removeSparseTerms(traintermmatrix, 0.9997)
-traintermmatrix <- removeSparseTerms(traintermmatrix, 0.995)
+traintermmatrix <- removeSparseTerms(traintermmatrix, 0.995) ## 0.995 will reduce the matrix around 300 terms
 traintermmatrix <- removeSparseTerms(traintermmatrix, 0.990) #163 terms left
-
-## 0.995 will reduce the matrix around 300 terms
 
 traintermmatrix
 
@@ -84,7 +83,9 @@ corp <- tm_map(corp, removePunctuation)
 corp <- tm_map(corp, stripWhitespace)
 testtermmatrix <- DocumentTermMatrix(corp, control = list(weighting = weightTf, stopwords = T))
 
-## Correlation analysis
+#################################
+
+########### Correlation analysis
 library(corrplot)
 c <- cor(as.matrix(traintermmatrix))
 corrplot(c, method = "color")
@@ -120,7 +121,7 @@ colnames(freq) <- c("terms", "frequency", "percentage proportion")
 x <- subset(freqlowtohigh[1:30,])
 
 
-##Bigrams
+###### Bigrams
 BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
 BigramMatrix <- TermDocumentMatrix(corp, control = list(tokenize = BigramTokenizer))
 BigramMatrix <- removeSparseTerms(BigramMatrix, 0.998)
@@ -136,6 +137,7 @@ colnames(freqBi) <- c("terms", "frequency")
 x <- subset(freqBi[1:30,])
 ggplot(x, aes(x = reorder(x$terms, -x$frequency), y = x$frequency)) + geom_bar(stat = "Identity", fill = "Sky Blue") + ggtitle("Top 30 frequent terms") + xlab("Terms") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
 ## RF model along with tuned mtry
 t <- tuneRF(as.matrix(traintermmatrix), as.factor(train$polarity), stepFactor = 0.5, plot = T)
 model_rf <- randomForest(as.matrix(traintermmatrix), as.factor(train$polarity))
@@ -145,7 +147,7 @@ table(results_rf, test$polarity)
 # Set proximity = T in rF to use it for MDS plot
 MDSplot(model_rf, as.factor(train$polarity), k=3)
 
-## SVM
+################ SVM ##################
 ## Terms/dictionary for train and test must be same to apply svm
 library(e1071)
 model_svm <- svm(as.matrix(traintermmatrix), as.factor(train$polarity))
@@ -217,7 +219,7 @@ pts <- data.frame(x = mds$points[,1], y = mds$points[,2])
 ggplot(pts, aes(x = x, y = y)) + geom_point(data = pts, aes(x = x, y = y, color = df$view)) + geom_text(data = pts, aes(x = x, y = y - 0.2, label = row.names(df)))
 
 
-#######################3
+####################### LSA and multi-dimensional plotting of LSA space 
 library(lsa)
 td.mat.lsa <- lw_bintf(td.mat) * gw_idf(td.mat)  # weighting
 lsaSpace <- lsa(td.mat.lsa)  # create LSA space
@@ -270,7 +272,7 @@ res_sim <- predict(simmulti, as.matrix(testtermmatrix))
 
 ########## Bag of Words + SVM ##########
 features <- c('wtf', 'wait', 'waiting', 'fail', 'support', 'dont', 'doesnt', 'arent', 'isnt', 'didnt', 'havent', 'hadnt', 'shouldnt', 'wouldnt', 'wont', 'not', 'cannot', 'couldnt', 'cant', 'fuck', 'worst', 'shit', 'yall', 'thank', 'thanks', 'hold', 'app', 'service', 'issues', 'problems', 'damn', 'lost', 'still', 'please', 'money', 'out', 'for', 'you', 'proud', 'congrats', 'best', 'great', 'appreciate', 'award', 'just', 'email', 'send', 'call', 'need', 'credit', 'debit', 'card', 'cash', 'banking', 'paid', 'people', 'pay', 'waiting', 'time', 'help', 'issue', 'problem', 'im', 'fix', 'fee', 'account')
-
+# Can create custom local dictionary to train algo
 
 trainvector <- as.vector(train$text)
 corp <- Corpus(VectorSource(trainvector))
@@ -308,51 +310,3 @@ table(result_svm, test$polarity)
 neg <- subset(twt, twt$polarity == "-1")
 pos <- subset(twt, twt$polarity == "1")
 neut <- subset(twt, twt$polarity == "0")
-
-neg_vector <- as.vector(neg$text)
-pos_vector <- as.vector(pos$text)
-neut_vector <- as.vector(neut$text)
-
-c <- Corpus(VectorSource(neg_vector))
-c <- tm_map(c, toSpace, "@")
-c <- tm_map(c, toSpace, "#")
-c <- tm_map(c, toSpace, "$")
-c <- tm_map(c, content_transformer(tolower))
-c <- tm_map(c, removeNumbers)
-c <- tm_map(c, removePunctuation)
-c <- tm_map(c, stripWhitespace)
-negtermmat <- DocumentTermMatrix(c, control = list(weighting = weightTf, stopwords = F))
-
-c <- Corpus(VectorSource(pos_vector))
-c <- tm_map(c, toSpace, "@")
-c <- tm_map(c, toSpace, "#")
-c <- tm_map(c, toSpace, "$")
-c <- tm_map(c, content_transformer(tolower))
-c <- tm_map(c, removeNumbers)
-c <- tm_map(c, removePunctuation)
-c <- tm_map(c, stripWhitespace)
-postermmat <- DocumentTermMatrix(c, control = list(weighting = weightTf, stopwords = F))
-
-c <- Corpus(VectorSource(neut_vector))
-c <- tm_map(c, toSpace, "@")
-c <- tm_map(c, toSpace, "#")
-c <- tm_map(c, toSpace, "$")
-c <- tm_map(c, content_transformer(tolower))
-c <- tm_map(c, removeNumbers)
-c <- tm_map(c, removePunctuation)
-c <- tm_map(c, stripWhitespace)
-neuttermmat <- DocumentTermMatrix(c, control = list(weighting = weightTf, stopwords = F))
-
-
-freq <- colSums(as.matrix(negtermmat))
-freq <- colSums(as.matrix(postermmat))
-freq <- colSums(as.matrix(neuttermmat))
-
-
-freq <- sort(freq, decreasing = T)
-freq <- as.data.frame(freq)
-freq <- data.frame(rownames(freq), freq$freq, prop.table(freq))
-colnames(freq) <- c("terms", "frequency", "percentage proportion")
-x <- subset(freq[1:100,])
-ggplot(x, aes(x = reorder(x$terms, -x$frequency), y = x$frequency)) + geom_bar(stat = "Identity", fill = "Sky Blue") + ggtitle("Top 30 frequent terms") + xlab("Terms") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
