@@ -1,5 +1,4 @@
 # Load required packages
-
 require(xlsx)
 require(tm)
 require(randomForest)
@@ -11,17 +10,15 @@ require(SnowballC)
 require(xgboost)
 
 # Load the data into the memory
-
 twt <- read.xlsx("bank_tweets_scored.xlsx", sheetIndex = 1)
 trainvector <- as.vector(twt$text)
 
 # Creating text corpus using tweets
-
 corp <- Corpus(VectorSource(trainvector))
 
 # Function to transform input pattern into space
-
 toSpace <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+
 
 # Data preprocessing steps
 
@@ -72,16 +69,20 @@ freq <- data.frame(rownames(freq), freq$freq, prop.table(freq))
 colnames(freq) <- c("terms", "frequency", "percentage proportion")
 
 x <- subset(freq[1:30,])
+# Viewing top 30 freq terms
 ggplot(x, aes(x = reorder(x$terms, -x$frequency), y = x$frequency)) + geom_bar(stat = "Identity", fill = "Sky Blue") + ggtitle("Top 30 frequent terms") + xlab("Terms") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+# Word Cloud
 wordcloud(freq$terms, freq$frequency, max.words = 100, rot.per = 0.2, colors = brewer.pal(8, "Dark2"))
 
+#################### XGBoost #####################
+# Relabeling -1 as 2
 f <- function(x){if (x == -1) return(2) else return(x)}
 pol <- lapply(twt$polarity, f)
 pol <- as.numeric(pol)
 
 dtrain <- xgb.DMatrix(as.matrix(termmatrix), label = pol)
-watch <- list(train = dtrain, valid = dtrain)
+watch <- list(train = dtrain, valid = dtrain) # train = test
 mboost <- xgb.train(data = dtrain, eta = 2.1, objective = "multi:softmax", num_class = 3, colsample_bytree = 0.75, min_child_weight = 1, max_depth = 15, watchlist = watch, nrounds = 100, eval_metric = "mlogloss")
 mboost <- xgb.train(data = dtrain, eta = 0.001, objective = "multi:softmax", num_class = 3, min_child_weight = 1, max_depth = 15, watchlist = watch, nrounds = 100, eval_metric = "merror")
 pred <- predict(mboost, dtrain)
@@ -92,7 +93,7 @@ table(pol, pred)
 mboost <- xgb.train(data = dtrain, eta = 0.4, objective = "multi:softmax", num_class = 3, colsample_bytree = 0.75, min_child_weight = 1, max_depth = 15, watchlist = watch, nrounds = 2200, eval_metric = "mlogloss")
 
 
-################ Removing twitter handle terms from corpus #####
+################ Add or remove terms from stopwords list #####
 stopwordlist <- c(stopwords("english"), "rt", "amp")
 stopwordlist <- setdiff(stopwordlist, "not")
 
