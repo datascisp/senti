@@ -1,0 +1,85 @@
+---
+title: "SocialCops - Screening Challenges"
+author: "Vishal Shukla"
+date: "September 6, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Task 1:
+
+A client of SocialCops was using Collect for household Survey in the Krishna district of Andhra Pradesh. It turns out in some responses, data collectors have missed entering the Assembly Constituency Names (AC), Mandal Names and Village Names in the relevant field. Fortunately, the client has maintained a database of all the tablets being deployed in different villages in different dates. Attached is an excel file <Tab_Villages_Mapping.xlsx> containing two sheets: Sheet 1 one contains a list of around 21,000 responses for which AC, Mandal and Village Names are missing and Sheet 2 contains a list of tablets in use in different villages in different dates. Can you get the missing Village Names? [Hint: You may not get names of all the missing villages!]
+
+Firstly, loading the required packages and loading the data from the spreadsheets.
+```{r warning=FALSE, message=FALSE}
+require(xlsx) #To read from Excell sheets
+```
+
+```{r warning=FALSE, message=FALSE, cache=TRUE}
+#Read the data from the sheets into dataframes
+df1 <- read.xlsx(file = "Tab_Villages_Mapping, Krishna District, 25 July 2015.xlsx", sheetIndex = 2, header = T)
+df2 <- read.xlsx(file = "Tab_Villages_Mapping, Krishna District, 25 July 2015.xlsx", sheetIndex = 1, header = T)
+```
+
+Overviewing the data in the dataframes.
+```{r warning=FALSE, message=FALSE}
+head(df1)
+dim(df1)
+head(df2)
+dim(df2)
+```
+One of the sheets contains 21531 records with missing AC, Mandal and Village names. Whereas the other sheet contains 2224 records of all the tablets being deployed during survey. The well maintained datasheet is to be used as a reference for filling up the missing fields in the other sheet.
+
+The dates in both the frames are in different format. Converting into a common date format.
+```{r warning=FALSE, message=FALSE}
+df1$Survey.Start.Date <- as.Date(df1$Survey.Start.Date, format = "%d-%B-%Y")
+df1$Survey.End.Date <- as.Date(df1$Survey.End.Date, format = "%d-%B-%Y")
+df2$Survey.Date <- as.Date(df2$Survey.Date)
+```
+The problem can be approached in different ways(SQL querying, use of nested loops, merging, use of set difference); but mostly the outline will remain the same in any of the solution. Since, Tab.No is the only attribute common between the two tables, it can be used to compare / merge / join the two tables. Note: Tab.No is not a primary key as the values are not unique. The second step would be to verify the validity by checking that the survey date lies between the survey start and end date.
+
+```{r}
+y <- merge.data.frame(df1, df2[,1:3], by.x = "Tab.No", by.y = "Tab.No", all.x = F, all.y = T, sort = T)
+```
+```{r}
+#Checking the number of records with missing survey start and end date in the merged data table
+length(which(is.na(y$Survey.Start.Date)))
+length(which(is.na(y$Survey.End.Date)))
+```
+```{r}
+#Removing the records with missing survey start and end date from the merged data
+y <- subset(y, !(is.na(y$Survey.Start.Date) | is.na(y$Survey.End.Date)))
+```
+```{r}
+#Rechecking the number of records with missing survey start and end date in the merged data table
+length(which(is.na(y$Survey.Start.Date)))
+length(which(is.na(y$Survey.End.Date)))
+```
+```{r}
+#Keeping the records with survey date falling between survey start and end date 
+y <- subset(y, (y$Survey.Date <=y$Survey.End.Date & y$Survey.Date >= y$Survey.Start.Date))
+```
+```{r}
+#Merging back with the second data frame with missing AC, Mandal and Village names
+y <- merge(y, df2[,1:3], by = intersect(names(y), names(df2[,1:3])), all = T)
+```
+```{r eval=FALSE}
+#Writing into an Excell spreadsheet
+write.xlsx(y, file = "lookup_frame.xlsx", sheetName = "Sheet1", col.names = T, row.names = F, showNA = T)
+```
+This file contains all valid records with the survey date in the range of survey start and end date. Also most of the records provided in the initial sheet(with missing values) has been assigned the AC, Mandal and Village Names. And as given in hint of the problem statement, not all records have been assigned village names.
+```{r}
+#Counting the number of records still missing with village names
+length(which(is.na(y$Village.Name)))
+```
+
+### Task 2:
+
+One of the clients of SocialCops wants to understand the level of development in different socio-economic parameters across all the districts of Orissa. Using open data, prepare an index that measures and ranks districts of Orissa on socio-economic parameters. Also prepare a short report on the output describing each of the components of the Index.  (Hint: Use Data from Census, National Rural Health Mission or similar sources)
+
+Will be using data from [data.gov.in](https://data.gov.in/resources/major-socio-economic-indicators-odisha-and-all-india-2011-01082014/download). It contains major socio-economic indicators of Odisha and All India from 2011 to 01.08.2014.
+
+
